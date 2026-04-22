@@ -9,8 +9,9 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
-
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,10 +21,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-bpm!6@u(bw9a+m#8xt@!so@%lx&r=pp%3fm&r!av7h3ipsq7!$"
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = []
 
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.integrations",
 ]
 
 MIDDLEWARE = [
@@ -115,3 +117,17 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+
+
+HA_WS_URL = os.getenv("HA_WS_URL")
+TOKEN = os.getenv("HA_TOKEN")
+ENTITY_ID = os.getenv("ENTITY_ID")
+
+
+SOLAR_API_TOKEN = os.getenv("SA_TOKEN")
+DEVICE_SN = os.getenv("DEVICE_SN")
+STATION_ID = os.getenv("STATION_ID")
+
+WEATHER_LAT = float(os.getenv("WEATHER_LAT", "49.8397"))
+WEATHER_LON = float(os.getenv("WEATHER_LON", "24.0297"))
+WEATHER_TIMEZONE = os.getenv("WEATHER_TIMEZONE", "Europe/Kyiv")
