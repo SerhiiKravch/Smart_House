@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
+    "apps.dashboard.apps.DashboardConfig",
+    "apps.devices.apps.DevicesConfig",
     "apps.integrations.apps.IntegrationsConfig",
     "apps.automation.apps.AutomationConfig",
 ]
@@ -110,7 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Kyiv"
 
 USE_I18N = True
 
@@ -125,7 +127,6 @@ STATIC_URL = "static/"
 
 HA_WS_URL = os.getenv("HA_WS_URL")
 HA_TOKEN = os.getenv("HA_TOKEN")
-HA_ENTITY_ID = os.getenv("ENTITY_ID")
 
 SOLAR_API_URL=os.getenv("SOLAR_API_URL")
 SOLAR_API_TOKEN = os.getenv("SA_TOKEN")
@@ -135,3 +136,27 @@ STATION_ID = os.getenv("STATION_ID")
 WEATHER_LAT = float(os.getenv("WEATHER_LAT", "49.8397"))
 WEATHER_LON = float(os.getenv("WEATHER_LON", "24.0297"))
 WEATHER_TIMEZONE = os.getenv("WEATHER_TIMEZONE", "Europe/Kyiv")
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s %(levelname)s %(name)s: %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+        },
+    },
+    "loggers": {
+        "apps.automation": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

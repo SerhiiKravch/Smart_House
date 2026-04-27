@@ -1,14 +1,41 @@
+import asyncio
+
 import aiohttp
 from django.conf import settings
 from .dto import SolarData
 
 from .exceptions import SolarAPIError
 
+REQUEST_TIMEOUT_SECONDS = 10
+MAX_RETRIES = 3
+BACKOFF_SECONDS = 1
+
+
+def _is_retryable(exc: Exception) -> bool:
+    return isinstance(exc, (aiohttp.ClientError, asyncio.TimeoutError))
+
 
 async def request_api(session, url, payload, headers):
-    async with session.post(url, json=payload, headers=headers) as response:
-        response.raise_for_status()
-        return await response.json()
+    last_error = None
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS)
+            async with session.post(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=timeout,
+            ) as response:
+                response.raise_for_status()
+                return await response.json()
+        except Exception as exc:
+            last_error = exc
+            if not _is_retryable(exc) or attempt == MAX_RETRIES:
+                break
+            await asyncio.sleep(BACKOFF_SECONDS * attempt)
+
+    raise SolarAPIError(f"Solar API request failed after {MAX_RETRIES} attempts: {last_error}")
 
 
 async def get_raw_solar_data():
@@ -35,6 +62,8 @@ async def get_raw_solar_data():
         async with aiohttp.ClientSession() as session:
             data = await request_api(session, url, payload, headers)
             return data
+    except SolarAPIError:
+        raise
     except Exception as e:
         raise SolarAPIError(f"Failed to fetch solar data: {e}") from e
 

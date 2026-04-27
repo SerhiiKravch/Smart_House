@@ -1,7 +1,13 @@
+import asyncio
+
 import aiohttp
 from django.conf import settings
 
 from .exceptions import WeatherAPIError
+
+REQUEST_TIMEOUT_SECONDS = 10
+MAX_RETRIES = 3
+BACKOFF_SECONDS = 1
 
 
 WEATHER_CODES = {
@@ -42,10 +48,21 @@ async def get_current_weather():
         "timezone": settings.WEATHER_TIMEZONE,
     }
 
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params) as response:
-                response.raise_for_status()
-                return await response.json()
-    except Exception as e:
-        raise WeatherAPIError(f"Failed to fetch weather data: {e}") from e
+    last_error = None
+    async with aiohttp.ClientSession() as session:
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS)
+                async with session.get(url, params=params, timeout=timeout) as response:
+                    response.raise_for_status()
+                    return await response.json()
+            except Exception as exc:
+                last_error = exc
+                is_retryable = isinstance(exc, (aiohttp.ClientError, asyncio.TimeoutError))
+                if not is_retryable or attempt == MAX_RETRIES:
+                    break
+                await asyncio.sleep(BACKOFF_SECONDS * attempt)
+
+    raise WeatherAPIError(
+        f"Failed to fetch weather data after {MAX_RETRIES} attempts: {last_error}"
+    )

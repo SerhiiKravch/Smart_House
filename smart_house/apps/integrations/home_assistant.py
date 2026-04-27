@@ -84,21 +84,29 @@ class HAWebSocketClient:
 
         return None
 
-    async def turn_on(self, entity_id: str):
+    async def call_service(
+        self,
+        domain: str,
+        service: str,
+        entity_id: str,
+        service_data: dict | None = None,
+    ):
+        payload_data = {"entity_id": entity_id}
+        if service_data:
+            payload_data.update(service_data)
+
         return await self.send_command({
             "type": "call_service",
-            "domain": "switch",
-            "service": "turn_on",
-            "service_data": {"entity_id": entity_id},
+            "domain": domain,
+            "service": service,
+            "service_data": payload_data,
         })
 
+    async def turn_on(self, entity_id: str):
+        return await self.call_service("switch", "turn_on", entity_id)
+
     async def turn_off(self, entity_id: str):
-        return await self.send_command({
-            "type": "call_service",
-            "domain": "switch",
-            "service": "turn_off",
-            "service_data": {"entity_id": entity_id},
-        })
+        return await self.call_service("switch", "turn_off", entity_id)
 
     async def close(self):
         if self.reader_task:

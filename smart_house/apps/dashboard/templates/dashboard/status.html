@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart House Dashboard</title>
+  <style>
+    :root {
+      --bg: #f6f3ee;
+      --panel: #fffdf9;
+      --ink: #171717;
+      --muted: #5b5b5b;
+      --line: #e8dfd3;
+      --ok: #167f5a;
+      --warn: #ad7b14;
+      --down: #b03a2e;
+      --accent: #124c7c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 85% 10%, #dcecff 0, rgba(220, 236, 255, 0) 45%),
+        radial-gradient(circle at 10% 0%, #ffe7d4 0, rgba(255, 231, 212, 0) 38%),
+        var(--bg);
+    }
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+      letter-spacing: 0.02em;
+    }
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 22px;
+    }
+    .device-select {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+    .grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      color: var(--accent);
+      letter-spacing: 0.01em;
+    }
+    .col-4 { grid-column: span 4; }
+    .col-6 { grid-column: span 6; }
+    .col-8 { grid-column: span 8; }
+    .col-12 { grid-column: span 12; }
+    .status-pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+    .healthy { background: #e9f9f2; color: var(--ok); border-color: #c8eddc; }
+    .degraded { background: #fff5df; color: var(--warn); border-color: #f3dfab; }
+    .down { background: #ffeceb; color: var(--down); border-color: #f0c3bf; }
+    .unknown { background: #efefef; color: #555; border-color: #ddd; }
+    dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; }
+    dt { color: var(--muted); }
+    dd { margin: 0; font-weight: 600; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      padding: 8px 4px;
+    }
+    th { color: var(--muted); font-weight: 600; }
+    .reason {
+      white-space: pre-wrap;
+      font-family: "Menlo", "SFMono-Regular", monospace;
+      font-size: 0.82rem;
+      background: #f8f8f8;
+      border-radius: 8px;
+      border: 1px solid #ececec;
+      padding: 10px;
+    }
+    @media (max-width: 820px) {
+      .col-4, .col-6, .col-8, .col-12 { grid-column: span 12; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Smart House Control Panel</h1>
+    <div class="subtitle">Realtime socket status and dependency health checks</div>
+
+    {% if empty_state %}
+      <div class="card">{{ empty_state }}</div>
+    {% else %}
+      <form method="get" class="device-select">
+        <label for="device_id">Socket:</label>
+        <select name="device_id" id="device_id" onchange="this.form.submit()">
+          {% for device in devices %}
+            <option value="{{ device.id }}" {% if selected_device and device.id == selected_device.id %}selected{% endif %}>
+              {{ device.name }} ({{ device.entity_id }})
+            </option>
+          {% endfor %}
+        </select>
+      </form>
+
+      <div class="grid">
+        <section class="card col-4">
+          <h2>Socket State</h2>
+          <dl>
+            <dt>Entity</dt><dd>{{ selected_device.entity_id }}</dd>
+            <dt>Current</dt><dd id="socket-state">{{ socket_state.state|default:"unknown"|upper }}</dd>
+            <dt>Source</dt><dd id="socket-source">{{ socket_state_source }}</dd>
+          </dl>
+        </section>
+
+        <section class="card col-4">
+          <h2>Solar Data</h2>
+          {% if solar_data %}
+            <dl>
+              <dt>Battery SOC</dt><dd id="solar-battery">{{ solar_data.battery_soc }} %</dd>
+              <dt>Generation</dt><dd id="solar-generation">{{ solar_data.generation_power }} W</dd>
+              <dt>Wire</dt><dd id="solar-wire">{{ solar_data.wire_power }} W</dd>
+              <dt>Consumption</dt><dd>{{ solar_data.consumption_power }} W</dd>
+            </dl>
+          {% else %}
+            <p>No solar data available.</p>
+          {% endif %}
+        </section>
+
+        <section class="card col-4">
+          <h2>Weather Data</h2>
+          {% if weather_data %}
+            <dl>
+              <dt>Condition</dt><dd id="weather-condition">{{ weather_data.weather_description }}</dd>
+              <dt>Temperature</dt><dd id="weather-temperature">{{ weather_data.temperature }} C</dd>
+              <dt>Cloud Cover</dt><dd id="weather-cloud">{{ weather_data.cloud_cover }} %</dd>
+              <dt>Wind</dt><dd id="weather-wind">{{ weather_data.wind_speed }} m/s</dd>
+            </dl>
+          {% else %}
+            <p>No weather data available.</p>
+          {% endif %}
+        </section>
+
+        <section class="card col-8">
+          <h2>Automation</h2>
+          {% if active_rule %}
+            <dl>
+              <dt>Rule</dt><dd>{{ active_rule.name }}</dd>
+              <dt>Priority</dt><dd>{{ active_rule.priority }}</dd>
+              <dt>Night Window</dt><dd>{{ active_rule.night_start_hour }}:00 - {{ active_rule.night_end_hour }}:00</dd>
+              <dt>Night Thresholds</dt><dd>SOC > {{ active_rule.min_battery_soc_night }}, Wire > {{ active_rule.min_wire_power_night }}</dd>
+              <dt>Day Threshold</dt><dd>Generation > {{ active_rule.min_generation_power_day }}</dd>
+              <dt>Interval</dt><dd>{{ active_rule.check_interval_seconds }} sec</dd>
+            </dl>
+          {% else %}
+            <p>No enabled rule linked to this device.</p>
+          {% endif %}
+        </section>
+
+        <section class="card col-4">
+          <h2>Dependency Health</h2>
+          <table>
+            <thead>
+              <tr><th>Dependency</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Home Assistant</td>
+                <td><span id="health-ha" class="status-pill {{ dependency_health.ha.status }}">{{ dependency_health.ha.status|upper }}</span></td>
+              </tr>
+              <tr>
+                <td>Solar API</td>
+                <td><span id="health-solar" class="status-pill {{ dependency_health.solar.status }}">{{ dependency_health.solar.status|upper }}</span></td>
+              </tr>
+              <tr>
+                <td>Weather API</td>
+                <td><span id="health-weather" class="status-pill {{ dependency_health.weather.status }}">{{ dependency_health.weather.status|upper }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="card col-12">
+          <h2>Latest Decision</h2>
+          {% if latest_decision %}
+            <dl>
+              <dt>Time</dt><dd id="decision-time">{{ latest_decision.decided_at }}</dd>
+              <dt>Action</dt><dd id="decision-action">{{ latest_decision.action }}</dd>
+              <dt>Mode</dt><dd id="decision-mode">{{ latest_decision.mode|default:"-" }}</dd>
+              <dt>Previous</dt><dd id="decision-prev">{{ latest_decision.previous_state|default:"-" }}</dd>
+              <dt>Result</dt><dd id="decision-result">{{ latest_decision.resulting_state|default:"-" }}</dd>
+            </dl>
+            <div id="decision-reason" class="reason">{{ latest_decision.reason }}</div>
+          {% else %}
+            <p id="decision-empty">No decision logs yet.</p>
+          {% endif %}
+        </section>
+      </div>
+    {% endif %}
+  </div>
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const deviceId = params.get("device_id");
+      const query = new URLSearchParams();
+      if (deviceId) query.set("device_id", deviceId);
+
+      function setText(id, value) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = value ?? "-";
+      }
+
+      function updateHealth(id, status) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove("healthy", "degraded", "down", "unknown");
+        const normalized = (status || "unknown").toLowerCase();
+        el.classList.add(normalized);
+        el.textContent = normalized.toUpperCase();
+      }
+
+      async function refreshSummary() {
+        try {
+          const response = await fetch(`/dashboard/api/summary/?${query.toString()}`, {
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+          });
+          if (!response.ok) return;
+          const data = await response.json();
+
+          setText("socket-state", (data.socket_state?.state || "unknown").toUpperCase());
+          setText("socket-source", data.socket_state?.source || "unavailable");
+
+          setText("solar-battery", data.solar ? `${data.solar.battery_soc} %` : "-");
+          setText("solar-generation", data.solar ? `${data.solar.generation_power} W` : "-");
+          setText("solar-wire", data.solar ? `${data.solar.wire_power} W` : "-");
+
+          setText("weather-condition", data.weather?.weather_description || "-");
+          setText("weather-temperature", data.weather ? `${data.weather.temperature} C` : "-");
+          setText("weather-cloud", data.weather ? `${data.weather.cloud_cover} %` : "-");
+          setText("weather-wind", data.weather ? `${data.weather.wind_speed} m/s` : "-");
+
+          updateHealth("health-ha", data.health?.ha?.status);
+          updateHealth("health-solar", data.health?.solar?.status);
+          updateHealth("health-weather", data.health?.weather?.status);
+
+          if (data.latest_decision) {
+            const empty = document.getElementById("decision-empty");
+            if (empty) empty.style.display = "none";
+            setText("decision-time", data.latest_decision.decided_at);
+            setText("decision-action", data.latest_decision.action);
+            setText("decision-mode", data.latest_decision.mode || "-");
+            setText("decision-prev", data.latest_decision.previous_state || "-");
+            setText("decision-result", data.latest_decision.resulting_state || "-");
+            setText("decision-reason", data.latest_decision.reason || "-");
+          }
+        } catch (_) {
+          // no-op: keep the last successful snapshot on screen
+        }
+      }
+
+      setInterval(refreshSummary, 300000);
+    })();
+  </script>
+</body>
+</html>
