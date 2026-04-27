@@ -12,16 +12,19 @@ async def request_api(session, url, payload, headers):
 
 
 async def get_raw_solar_data():
-    url = settings.SOLAR_API_URL
+    BASE_URL = settings.SOLAR_API_URL
     token = settings.SOLAR_API_TOKEN
+    station = settings.STATION_ID
 
-    if not url:
+    if not BASE_URL:
         raise SolarAPIError("SOLAR_API_URL is not configured")
     if not token:
         raise SolarAPIError("SOLAR_API_TOKEN is not configured")
 
+    url = f"{BASE_URL}/v1.0/station/latest"
+
     payload = {
-        # тут твій payload
+        "stationId": station
     }
     headers = {
         "Authorization": f"Bearer {token}",
@@ -49,4 +52,4 @@ async def get_selected_data():
 
 async def get_battery_soc():
     data = await get_selected_data()
-    return data.get("batterySOC")
+    return data.battery_soc

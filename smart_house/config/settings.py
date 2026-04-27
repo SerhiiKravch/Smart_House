@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(BASE_DIR / ".env")
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -38,7 +40,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django.contrib.integrations",
+
+    "apps.integrations.apps.IntegrationsConfig",
+    "apps.automation.apps.AutomationConfig",
 ]
 
 MIDDLEWARE = [
@@ -51,7 +55,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "smart_house.urls"
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
@@ -68,7 +72,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "smart_house.wsgi.application"
+WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Database
@@ -120,10 +124,10 @@ STATIC_URL = "static/"
 
 
 HA_WS_URL = os.getenv("HA_WS_URL")
-TOKEN = os.getenv("HA_TOKEN")
-ENTITY_ID = os.getenv("ENTITY_ID")
+HA_TOKEN = os.getenv("HA_TOKEN")
+HA_ENTITY_ID = os.getenv("ENTITY_ID")
 
-
+SOLAR_API_URL=os.getenv("SOLAR_API_URL")
 SOLAR_API_TOKEN = os.getenv("SA_TOKEN")
 DEVICE_SN = os.getenv("DEVICE_SN")
 STATION_ID = os.getenv("STATION_ID")
